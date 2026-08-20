@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlashBites | Official Google Maps Real-Time Driver Telemetry</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#f43f5e', 600: '#e11d48' }
+          },
+          animation: {
+            ripple: "ripple 2s ease infinite",
+            orbit: "orbit 20s linear infinite",
+          },
+          keyframes: {
+            ripple: {
+              "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
+              "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
+            },
+            orbit: {
+              "0%": { transform: "rotate(0deg) translateY(100px) rotate(0deg)" },
+              "100%": { transform: "rotate(360deg) translateY(100px) rotate(-360deg)" },
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- OFFICIAL GOOGLE MAPS JAVASCRIPT API SDK -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDsJNqdAKmJ5WpDyKT04kLcGXfOtvgH0RE&libraries=geometry"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+    }
+    #google-map-canvas {
+      height: 320px;
+      border-radius: 1rem;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- TOP NAVBAR -->
+  <header class="sticky top-0 z-50 glass-card border-b border-slate-200 bg-white/90 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      
+      <!-- LOGO -->
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="signOut()">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 p-0.5 shadow-md shadow-rose-500/20">
+          <div class="w-full h-full bg-white rounded-[10px] flex items-center justify-center font-black text-rose-600 text-lg">
+            ⚡
+          </div>
+        </div>
+        <div>
+          <span class="font-black text-xl tracking-tight text-slate-900">FlashBites</span>
+          <p class="text-xs text-slate-500 font-medium -mt-1">Official Google Maps SDK Telemetry</p>
+        </div>
+      </div>
+
+      <!-- USER PROFILE BAR -->
+      <div id="nav-user-bar" class="hidden flex items-center space-x-4">
+        <div id="nav-role-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-600 border border-rose-200">
+          Customer
+        </div>
+        <div class="flex items-center space-x-2 border-l border-slate-200 pl-4">
+          <div id="nav-avatar" class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-700 text-xs">
+            A
+          </div>
+          <div class="hidden md:block">
+            <p id="nav-user-name" class="text-xs font-bold text-slate-900 leading-tight">Alex Rivera</p>
+            <p id="nav-user-email" class="text-[10px] text-slate-500">customer@flashbites.com</p>
+          </div>
+        </div>
+        <button onclick="signOut()" class="px-3 py-1.5 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 hover:border-rose-200 rounded-xl text-xs font-bold transition-all">
+          Sign Out
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6 space-y-6">
+    
+    <!-- NOTIFICATIONS TOAST -->
+    <div id="notification-banner" class="hidden p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center justify-between shadow-sm">
+      <span id="notification-text">Notification message</span>
+      <span class="text-[10px] text-emerald-600 font-semibold">● Google Maps API Stream Active</span>
+    </div>
+
+    <!-- 1. AUTH LOGIN SCREEN -->
+    <div id="view-auth" class="space-y-6 max-w-4xl mx-auto my-4">
+      <div class="text-center space-y-2">
+        <span class="px-3 py-1 bg-rose-50 text-rose-600 border border-rose-200 rounded-full text-xs font-extrabold uppercase tracking-wider">
+          Secured Multi-Role Access
+        </span>
+        <h1 class="text-3xl font-extrabold text-slate-900">Sign In to FlashBites</h1>
+        <p class="text-sm text-slate-500 max-w-lg mx-auto">
+          Select your account role below to access your dedicated Customer, Restaurant, or Delivery Partner dashboard.
+        </p>
+      </div>
+
+      <!-- Modern Animated Sign In Card -->
+      <div class="glass-card rounded-3xl p-8 border border-slate-200 my-4 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden bg-white shadow-xl">
+        <div class="w-full md:w-1/2 h-72 flex flex-col items-center justify-center relative overflow-hidden bg-slate-50 rounded-2xl border border-slate-200">
+          <div class="absolute w-36 h-36 rounded-full border border-slate-200 animate-ripple opacity-50"></div>
+          <div class="absolute w-56 h-56 rounded-full border border-slate-200 animate-ripple opacity-30"></div>
+          <div class="absolute w-72 h-72 rounded-full border border-slate-200 animate-orbit flex items-center justify-center">
+            <span class="p-2 bg-white border border-slate-200 rounded-full text-base shadow-sm">⚡</span>
+          </div>
+          <span class="text-3xl font-extrabold text-slate-900 z-10">FlashBites</span>
+          <span class="text-xs text-rose-600 font-bold mt-1 z-10">Official Google Maps SDK Active</span>
+        </div>
+
+        <div class="w-full md:w-1/2 space-y-4 max-w-sm mx-auto">
+          
+          <div class="space-y-1">
+            <label class="text-xs font-bold text-slate-700 block uppercase tracking-wider">
+              Select Account Role *
+            </label>
+            <div class="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200">
+              <button id="auth-tab-cust" onclick="selectAuthRole('CUSTOMER')" class="py-2 px-1 rounded-lg text-xs font-bold bg-rose-600 text-white shadow-sm">👤 Customer</button>
+              <button id="auth-tab-rest" onclick="selectAuthRole('RESTAURANT')" class="py-2 px-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900">🍳 Kitchen</button>
+              <button id="auth-tab-drv" onclick="selectAuthRole('DRIVER')" class="py-2 px-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900">🛵 Driver</button>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <label class="text-xs font-bold text-slate-700">Email Address *</label>
+              <input id="auth-email-input" type="email" value="customer@flashbites.com" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:border-rose-500 focus:outline-none" />
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-700">Password *</label>
+              <input type="password" value="••••••••" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:border-rose-500 focus:outline-none" />
+            </div>
+            <button id="auth-submit-btn" onclick="submitAuthLogin()" class="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs shadow-lg shadow-rose-600/20 transition-all">
+              Sign In to Customer Dashboard &rarr;
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. CUSTOMER DOMAIN DASHBOARD WITH OFFICIAL GOOGLE MAPS TELEMETRY CANVAS -->
+    <div id="view-customer" class="hidden space-y-6">
+      
+      <!-- Hero Banner -->
+      <section class="rounded-3xl bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 p-8 text-white shadow-xl">
+        <div class="max-w-xl space-y-2">
+          <span class="px-3 py-1 bg-white/20 rounded-full text-xs font-extrabold uppercase">🚀 South Indian Express</span>
+          <h2 class="text-3xl font-extrabold">Hot Masala Dosa & Biryani Delivered in 15 Mins</h2>
+          <p class="text-xs text-white/90">Authentic South Indian eateries & degree filter coffee with zero delivery fee.</p>
+        </div>
+      </section>
+
+      <!-- OFFICIAL GOOGLE MAPS REALTIME DRIVER TRACKING CANVAS -->
+      <section class="bg-white rounded-3xl p-6 border border-slate-200 shadow-xl space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="font-extrabold text-slate-900 text-base flex items-center space-x-2">
+              <span>📍 Official Google Maps Live Telemetry Canvas</span>
+            </h3>
+            <p class="text-xs text-slate-500">Continuous 1.5-second driver GPS telemetry stream (Key: AIzaSyDsJN...)</p>
+          </div>
+          
+          <button id="btn-toggle-stream" onclick="toggleGpsStream()" class="px-3.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-extrabold shadow-xs">
+            ● Google Maps Stream Active (1.5s)
+          </button>
+        </div>
+
+        <!-- GOOGLE MAP CANVAS CONTAINER -->
+        <div id="google-map-canvas" class="w-full border border-slate-200 shadow-inner"></div>
+
+        <!-- GPS TELEMETRY HUD DATA DISPLAY -->
+        <div class="bg-slate-900 text-white rounded-2xl p-4 flex flex-wrap items-center justify-between text-xs font-mono">
+          <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Partner: Marcus Chen (Ather 450X EV)</span>
+          </div>
+          <div class="flex items-center space-x-4 text-slate-300">
+            <span>Latitude: <strong id="hud-lat" class="text-emerald-400">12.97220</strong></span>
+            <span>Longitude: <strong id="hud-lng" class="text-emerald-400">77.59520</strong></span>
+            <span class="text-amber-400">ETA: 6 Mins</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- South Indian Restaurants Grid -->
+      <section class="space-y-4">
+        <h3 class="text-lg font-extrabold text-slate-900">Featured South Indian Eateries</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div class="bg-white rounded-3xl p-4 border border-slate-200 shadow-sm space-y-3">
+            <img src="https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&auto=format&fit=crop&q=80" class="w-full h-32 rounded-2xl object-cover" />
+            <div>
+              <h4 class="font-extrabold text-slate-900">Sri Udipi Grand</h4>
+              <p class="text-xs text-slate-500">South Indian Tiffin & Dosa • ★ 4.8</p>
+            </div>
+            <div class="flex justify-between items-center text-xs pt-2 border-t border-slate-100">
+              <span class="font-bold text-slate-800">Special Masala Dosa</span>
+              <span class="font-extrabold text-rose-600">₹120</span>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-3xl p-4 border border-slate-200 shadow-sm space-y-3">
+            <img src="https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=600&auto=format&fit=crop&q=80" class="w-full h-32 rounded-2xl object-cover" />
+            <div>
+              <h4 class="font-extrabold text-slate-900">Hyderabadi Biryani House</h4>
+              <p class="text-xs text-slate-500">Hyderabadi Dum Biryani • ★ 4.9</p>
+            </div>
+            <div class="flex justify-between items-center text-xs pt-2 border-t border-slate-100">
+              <span class="font-bold text-slate-800">Chicken Dum Biryani</span>
+              <span class="font-extrabold text-rose-600">₹299</span>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-3xl p-4 border border-slate-200 shadow-sm space-y-3">
+            <img src="https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=600&auto=format&fit=crop&q=80" class="w-full h-32 rounded-2xl object-cover" />
+            <div>
+              <h4 class="font-extrabold text-slate-900">Chettinad Spice Kitchen</h4>
+              <p class="text-xs text-slate-500">Chettinad & Malabar Curry • ★ 4.7</p>
+            </div>
+            <div class="flex justify-between items-center text-xs pt-2 border-t border-slate-100">
+              <span class="font-bold text-slate-800">Chettinad Chicken Gravy</span>
+              <span class="font-extrabold text-rose-600">₹280</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- 3. RESTAURANT KITCHEN DISPLAY SYSTEM (KDS) -->
+    <div id="view-restaurant" class="hidden space-y-6">
+      <div class="flex items-center justify-between bg-white p-6 rounded-3xl border border-slate-200 shadow-xl">
+        <div class="flex items-center space-x-3">
+          <div class="w-12 h-12 rounded-2xl bg-amber-500 text-slate-950 font-black text-xl flex items-center justify-center">🍳</div>
+          <div>
+            <h2 className="text-xl font-extrabold text-slate-900">Kitchen Display System (KDS)</h2>
+            <p className="text-xs text-slate-500">Sri Udipi Grand • Kitchen Console</p>
+          </div>
+        </div>
+        <div className="flex space-x-3 text-xs">
+          <div className="bg-slate-50 px-4 py-2 rounded-2xl border border-slate-200">
+            <span className="text-slate-500 block text-[10px] font-bold uppercase">Kitchen Revenue</span>
+            <span className="font-black text-rose-600 text-base">₹3,450</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xl space-y-3">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+          <span class="font-extrabold text-slate-900">Order #ORD-9821</span>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">PLACED</span>
+        </div>
+        <p class="text-xs text-slate-600">Items: 2x Special Masala Dosa, 2x Filter Coffee (Total: ₹300)</p>
+        <div class="flex space-x-2 pt-2">
+          <button onclick="updateStatus('CONFIRMED')" class="px-4 py-2 bg-amber-500 text-slate-950 font-extrabold rounded-xl text-xs">Accept & Confirm</button>
+          <button onclick="updateStatus('PREPARING')" class="px-4 py-2 bg-amber-600 text-white font-extrabold rounded-xl text-xs">Start Cooking</button>
+          <button onclick="updateStatus('READY_FOR_PICKUP')" class="px-4 py-2 bg-emerald-600 text-white font-extrabold rounded-xl text-xs">Mark Ready & Auto-Assign Driver</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. DELIVERY PARTNER DISPATCH SYSTEM -->
+    <div id="view-driver" class="hidden space-y-6 max-w-4xl mx-auto">
+      <div class="flex items-center justify-between bg-white p-6 rounded-3xl border border-slate-200 shadow-xl">
+        <div class="flex items-center space-x-3">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-600 text-white font-black text-xl flex items-center justify-center">🛵</div>
+          <div>
+            <h2 className="text-xl font-extrabold text-slate-900">Delivery Partner Console</h2>
+            <p className="text-xs text-slate-500">Marcus Chen • Ather 450X EV Scooter</p>
+          </div>
+        </div>
+        <button id="btn-start-device-gps" onclick="startDeviceGPS()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl text-xs shadow-md">
+          📡 Broadcast Live Driver GPS (1.5s)
+        </button>
+      </div>
+
+      <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-xl space-y-4">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+          <span class="text-xs font-extrabold text-slate-400 uppercase">Assigned Task</span>
+          <span class="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-bold">READY FOR PICKUP</span>
+        </div>
+        <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+          <div>
+            <span class="text-[10px] font-bold text-amber-700 uppercase block">1. Pickup Location</span>
+            <p class="text-xs font-bold text-slate-900">Sri Udipi Grand</p>
+          </div>
+          <div>
+            <span class="text-[10px] font-bold text-rose-600 uppercase block">2. Dropoff Destination</span>
+            <p class="text-xs font-bold text-slate-900">Flat 402, Block B, Brigade Meadows</p>
+          </div>
+        </div>
+
+        <div class="flex space-x-3">
+          <button onclick="updateDriverGPS(12.9745, 77.5980)" class="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-2xl text-xs shadow-md">
+            🚴 Broadcast GPS (12.9745, 77.5980)
+          </button>
+          <button onclick="updateDriverGPS(12.9780, 77.6010)" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl text-xs shadow-md">
+            🏁 Arrived at Destination (Delivered)
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    let selectedAuthRole = 'CUSTOMER';
+    let currentUser = null;
+    let googleMapInstance = null;
+    let driverGoogleMarker = null;
+    let streamInterval = null;
+    let isStreaming = true;
+
+    const restPos = { lat: 12.9720, lng: 77.5950 }; // Sri Udipi Grand
+    const custPos = { lat: 12.9780, lng: 77.6010 }; // Customer Address
+    let currentDriverPos = { lat: 12.9722, lng: 77.5952 };
+
+    function initGoogleMapsCanvas() {
+      if (googleMapInstance) return;
+
+      setTimeout(() => {
+        const container = document.getElementById('google-map-canvas');
+        if (!container) return;
+
+        if (window.google && window.google.maps) {
+          // Initialize Official Google Maps JS Instance
+          googleMapInstance = new google.maps.Map(container, {
+            center: restPos,
+            zoom: 14,
+            disableDefaultUI: false,
+            zoomControl: true
+          });
+
+          // Kitchen Marker
+          new google.maps.Marker({
+            position: restPos,
+            map: googleMapInstance,
+            title: 'Sri Udipi Grand Kitchen',
+            icon: 'https://maps.google.com/mapfiles/ms/icons/orange-dot.png'
+          });
+
+          // Customer Marker
+          new google.maps.Marker({
+            position: custPos,
+            map: googleMapInstance,
+            title: 'Customer Dropoff Address',
+            icon: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png'
+          });
+
+          // Moving Driver Marker
+          driverGoogleMarker = new google.maps.Marker({
+            position: currentDriverPos,
+            map: googleMapInstance,
+            title: 'Marcus Chen (Delivery Partner)',
+            icon: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png'
+          });
+
+          // Polyline Route
+          new google.maps.Polyline({
+            path: [restPos, custPos],
+            geodesic: true,
+            strokeColor: '#e11d48',
+            strokeOpacity: 0.8,
+            strokeWeight: 4,
+            map: googleMapInstance
+          });
+
+          // Launch 1.5s high-frequency telemetry stream loop
+          startHighFrequencyStream();
+        } else {
+          // Fallback map container
+          container.innerHTML = '<div class="p-8 text-center text-xs text-slate-500 font-bold">Google Maps API initializing...</div>';
+        }
+      }, 300);
+    }
+
+    function startHighFrequencyStream() {
+      if (streamInterval) clearInterval(streamInterval);
+
+      let step = 0;
+      const totalSteps = 20;
+
+      streamInterval = setInterval(() => {
+        if (!isStreaming) return;
+
+        step = (step + 1) % (totalSteps + 1);
+        const ratio = step / totalSteps;
+
+        currentDriverPos = {
+          lat: restPos.lat + (custPos.lat - restPos.lat) * ratio,
+          lng: restPos.lng + (custPos.lng - restPos.lng) * ratio
+        };
+
+        if (driverGoogleMarker && googleMapInstance) {
+          driverGoogleMarker.setPosition(currentDriverPos);
+          googleMapInstance.panTo(currentDriverPos);
+
+          // Update HUD
+          document.getElementById('hud-lat').innerText = currentDriverPos.lat.toFixed(5);
+          document.getElementById('hud-lng').innerText = currentDriverPos.lng.toFixed(5);
+        }
+      }, 1500);
+    }
+
+    function updateDriverGPS(lat, lng) {
+      currentDriverPos = { lat, lng };
+      if (driverGoogleMarker && googleMapInstance) {
+        driverGoogleMarker.setPosition(currentDriverPos);
+        googleMapInstance.panTo(currentDriverPos);
+        document.getElementById('hud-lat').innerText = lat.toFixed(5);
+        document.getElementById('hud-lng').innerText = lng.toFixed(5);
+        showNotification('📍 Google Maps Driver Position updated to (' + lat + ', ' + lng + ')');
+      }
+    }
+
+    function toggleGpsStream() {
+      isStreaming = !isStreaming;
+      const btn = document.getElementById('btn-toggle-stream');
+      if (isStreaming) {
+        btn.innerText = '● Google Maps Stream Active (1.5s)';
+        btn.className = 'px-3.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-extrabold shadow-xs';
+      } else {
+        btn.innerText = 'Paused';
+        btn.className = 'px-3.5 py-1.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-full text-xs font-extrabold shadow-xs';
+      }
+    }
+
+    function startDeviceGPS() {
+      if (!('geolocation' in navigator)) {
+        alert('Geolocation API is not supported by your browser.');
+        return;
+      }
+
+      navigator.geolocation.watchPosition(
+        (pos) => {
+          updateDriverGPS(pos.coords.latitude, pos.coords.longitude);
+        },
+        (err) => alert('GPS Error: ' + err.message),
+        { enableHighAccuracy: true }
+      );
+    }
+
+    function selectAuthRole(role) {
+      selectedAuthRole = role;
+      document.getElementById('auth-tab-cust').className = 'py-2 px-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
+      document.getElementById('auth-tab-rest').className = 'py-2 px-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
+      document.getElementById('auth-tab-drv').className = 'py-2 px-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
+
+      const emailInput = document.getElementById('auth-email-input');
+      const submitBtn = document.getElementById('auth-submit-btn');
+
+      if (role === 'CUSTOMER') {
+        document.getElementById('auth-tab-cust').className = 'py-2 px-1 rounded-lg text-xs font-bold bg-rose-600 text-white shadow-sm';
+        emailInput.value = 'customer@flashbites.com';
+        submitBtn.innerText = 'Sign In to Customer Dashboard \u2192';
+        submitBtn.className = 'w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs shadow-lg shadow-rose-600/20 transition-all';
+      } else if (role === 'RESTAURANT') {
+        document.getElementById('auth-tab-rest').className = 'py-2 px-1 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 shadow-sm';
+        emailInput.value = 'restaurant@flashbites.com';
+        submitBtn.innerText = 'Sign In to Kitchen Dashboard \u2192';
+        submitBtn.className = 'w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs shadow-lg shadow-amber-500/20 transition-all';
+      } else if (role === 'DRIVER') {
+        document.getElementById('auth-tab-drv').className = 'py-2 px-1 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-sm';
+        emailInput.value = 'driver@flashbites.com';
+        submitBtn.innerText = 'Sign In to Driver Dashboard \u2192';
+        submitBtn.className = 'w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs shadow-lg shadow-emerald-600/20 transition-all';
+      }
+    }
+
+    function submitAuthLogin() {
+      const email = document.getElementById('auth-email-input').value;
+      const names = { CUSTOMER: 'Alex Rivera', RESTAURANT: 'Sri Udipi Grand', DRIVER: 'Marcus Chen' };
+      
+      currentUser = {
+        name: names[selectedAuthRole],
+        email: email,
+        role: selectedAuthRole
+      };
+
+      document.getElementById('nav-user-bar').classList.remove('hidden');
+      document.getElementById('nav-user-name').innerText = currentUser.name;
+      document.getElementById('nav-user-email').innerText = currentUser.email;
+      document.getElementById('nav-avatar').innerText = currentUser.name.charAt(0);
+      document.getElementById('nav-role-badge').innerText = selectedAuthRole;
+
+      showNotification('Signed in as ' + currentUser.name + ' (' + selectedAuthRole + ')');
+      renderDashboard();
+    }
+
+    function signOut() {
+      currentUser = null;
+      document.getElementById('nav-user-bar').classList.add('hidden');
+      document.getElementById('view-auth').classList.remove('hidden');
+      document.getElementById('view-customer').classList.add('hidden');
+      document.getElementById('view-restaurant').classList.add('hidden');
+      document.getElementById('view-driver').classList.add('hidden');
+      showNotification('Signed out successfully');
+    }
+
+    function renderDashboard() {
+      document.getElementById('view-auth').classList.add('hidden');
+      ['view-customer', 'view-restaurant', 'view-driver'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+
+      if (currentUser.role === 'CUSTOMER') {
+        document.getElementById('view-customer').classList.remove('hidden');
+        initGoogleMapsCanvas();
+      } else if (currentUser.role === 'RESTAURANT') {
+        document.getElementById('view-restaurant').classList.remove('hidden');
+      } else if (currentUser.role === 'DRIVER') {
+        document.getElementById('view-driver').classList.remove('hidden');
+      }
+    }
+
+    function updateStatus(status) {
+      showNotification('Order status updated to ' + status);
+    }
+
+    function showNotification(msg) {
+      const banner = document.getElementById('notification-banner');
+      document.getElementById('notification-text').innerText = msg;
+      banner.classList.remove('hidden');
+      setTimeout(() => banner.classList.add('hidden'), 3500);
+    }
+  </script>
+</body>
+</html>
