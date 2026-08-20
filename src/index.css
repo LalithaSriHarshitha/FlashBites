@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: hsl(210, 40%, 98%);
+    --foreground: hsl(222, 47%, 11%);
+    --skeleton: hsl(210, 40%, 93%);
+    --border: hsl(214, 32%, 91%);
+    --btn-border: hsl(214, 32%, 88%);
+    --input: hsl(214, 32%, 93%);
+    --radius: 0.75rem;
+  }
+
+  body {
+    background-color: #f8fafc;
+    color: #0f172a;
+  }
+}
+
+@layer components {
+  .g-button {
+    @apply rounded-[var(--radius)] border bg-white;
+    border-color: var(--btn-border);
+  }
+}
+
+/* Light Theme Scrollbars & Glass Cards */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+}
+
+.glass-pill {
+  background: rgba(241, 245, 249, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+}
